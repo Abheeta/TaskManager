@@ -21,6 +21,7 @@ const mongoose = require('mongoose');
 const apiErrorHandler = require('./middleware/apiErrorHandler.js');
 const googleAuth = require("./routes/googleAuth.js");
 const localAuth = require("./routes/localAuth.js");
+const taskRoutes = require("./routes/taskRoutes.js");
 
 
 require('dotenv').config();
@@ -80,6 +81,7 @@ app.use(passport.session());
 
 app.use(googleAuth);
 app.use("/local", localAuth);
+app.use(taskRoutes);
 
 
 

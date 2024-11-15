@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useCurrentUser } from './UserContext';
+
 
 const  Navbar = () => {
 
   const location = useLocation(); 
+
+  const {currentUser, logoutCurrentUser} = useCurrentUser();
+
 
 
   const buttonStyle = (buttonType) => {
@@ -22,24 +27,35 @@ const  Navbar = () => {
       </button>
       
       <div className="flex items-center">
-        <Link to={"/login"}>
-                <button 
-                className={buttonStyle('/login')}
+        {currentUser?.loggedIn ? (
+          <button 
+            onClick={logoutCurrentUser}
+            className="bg-[#ff7575] hover:bg-[#ff5252] text-white px-6 py-2 rounded-md transition-colors"
+          >
+            Logout
+          </button>
+        ) : (
+          <>
+           <Link to={"/login"}>
+              <button 
+              className={buttonStyle('/login')}
 
-                >
-                Login
-                </button>
-        </Link>
+              >
+               Login
+              </button>
+            </Link>
 
 
-        <Link to={"/signup"}>
+            <Link to={"/signup"}>
 
-                <button 
-                className={buttonStyle('/signup')}
-                >
+              <button 
+              className={buttonStyle('/signup')}
+              >
                 Signup
-                </button>
-        </Link>
+              </button>
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );

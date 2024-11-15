@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const passport = require('passport');
 const {UserModel} = require('../models/usermodel.js'); // Adjust the path as needed
 const HttpError = require('../utils/http.js');
+const { TaskListModel } = require('../models/tasklistmodel.js');
 const router = express.Router();
 
 // Route to handle login
@@ -106,6 +107,31 @@ router.post('/signup', async (req, res, next) => {
         password: hashedPassword.toString('hex'), // Store hashed password
         salt
       });
+
+      const tasklists = [
+        new TaskListModel({
+          name: 'To Do',
+          user: newUser._id,
+          tasks: []
+        }),
+        new TaskListModel({
+          name: 'In Progress',
+          user: newUser._id,
+          tasks: []
+        }),
+        new TaskListModel({
+          name: 'Done',
+          user: newUser._id,
+          tasks: []
+        }),
+      ];
+
+      newUser.tasklists = tasklists.map(list => {
+        return list._id
+      })
+
+      await Promise.all(tasklists.map(tasklist => tasklist.save()));
+
 
       // Save the new user to the database
       await newUser.save();

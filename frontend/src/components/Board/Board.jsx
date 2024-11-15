@@ -1,32 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ControlPanel from "./ControlPanel.jsx";
 import TaskList from "./TaskList.jsx";
+import { useCurrentUser } from "../UserContext.jsx";
 
 const Board = () => {
-  const [tasks] = useState({
-    todo: [
-      { id: 3, title: "Task 3", description: "Description 3", created: "01/09/2024, 05:30:00" },
-      { id: 1, title: "Task 1", description: "Description 1", created: "01/09/2021, 05:30:00" },
-      { id: 2, title: "Task 2", description: "Description 2", created: "01/09/2021, 05:30:00" },
-    ],
-    inProgress: [
-      { id: 4, title: "Task 4", description: "Description 4", created: "01/09/2024, 05:30:00" },
-      { id: 5, title: "Task 5", description: "Description 5", created: "01/09/2021, 05:30:00" },
-    ],
-    done: [
-      { id: 6, title: "Task 6", description: "Description 6", created: "01/09/2021, 05:30:00" },
-    ],
-  });
-
+  const { currentUser } = useCurrentUser();
+  
+  const [tasklists, setTaskLists] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const fetchTaskLists = async () => {
+    setIsLoading(true); // Start loading
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tasklist?userId=${currentUser._id}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(data);
+        setTaskLists(data.tasklists); // Set tasklists after fetch completes
+      } else {
+        console.error('Failed to fetch tasklists');
+      }
+    } catch (error) {
+      console.error('Error fetching tasklists:', error);
+    } finally {
+      setIsLoading(false); // Stop loading
+    }
+  };
+  
+  useEffect(() => {
+    fetchTaskLists();
+  }, [currentUser._id]); // Re-fetch when currentUser._id changes
+  
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-7xl mx-auto space-y-4">
         <ControlPanel />
         
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-4">
-          <TaskList title="TODO" tasks={tasks.todo} />
-          <TaskList title="IN PROGRESS" tasks={tasks.inProgress} />
-          <TaskList title="DONE" tasks={tasks.done} />
+          {
+            isLoading ? (
+              <div className="flex justify-center items-center">
+                <span>Loading...</span>
+                {/* You can replace this with a spinner if you want */}
+              </div>
+            ) : (
+              tasklists.map(tasklist => (
+                  <TaskList key={tasklist._id} title={tasklist.name}  />
+              ))
+            )
+          }
         </div>
       </div>
     </div>
