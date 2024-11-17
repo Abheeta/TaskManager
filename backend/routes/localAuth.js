@@ -91,7 +91,7 @@ router.post('/signup', async (req, res, next) => {
     // Check if the user already exists
     const existingUser = await UserModel.findOne({ email: email, googleId: {$exists:false} });
     if (existingUser) {
-      return next( new HttpError.badRequest('An account exists for this email') );
+      return next( HttpError.badRequest('An account exists for this email') );
     }
 
     // Generate a salt and hash the password
