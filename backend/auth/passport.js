@@ -41,7 +41,7 @@ requiredEnvVars.forEach(envVar => {
  * @param {Function} done - Passport callback
  */
 passport.serializeUser(async (user, done) => {
-  console.log('serializing user', user);
+  console.log('serializing user', user.googleId?{email:user.email, googleId:user.googleId}:{email:user.email});
   done(null, user.googleId?{email:user.email, googleId:user.googleId}:{email:user.email});
 });
 
@@ -59,7 +59,7 @@ passport.deserializeUser(async (identifier, done) => {
     const user = await UserModel.findOne(
       identifier.googleId
         ? { email: identifier.email, googleId: identifier.googleId }
-        : { email: identifier.email }
+        : { email: identifier.email, googleId: { $exists: false } }
     )
     .select('_id email firstName lastName avatar')
     .lean()

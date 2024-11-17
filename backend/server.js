@@ -66,7 +66,11 @@ app.use(session({
     secret: `${process.env.GOOGLE_CREDENTIALS_SECRET}SESSION_SECRET`,
     resave: false,
     saveUninitialized: true,
-    cookie: {
+    cookie: process.env.COOKIE_SETTINGS === "local" ? {
+        secure: false, // Set to true in production with HTTPS
+        sameSite: 'lax', // Use 'None' in production with secure: true
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours,
+    } : {
         secure: true, // Set to true in production with HTTPS
         sameSite: 'None', // Use 'None' in production with secure: true
         maxAge: 24 * 60 * 60 * 1000, // 24 hours,
