@@ -33,7 +33,9 @@ app.use(
     cors({
         origin: [
             'http://localhost:3006',
-            'http://localhost:8000'
+            'http://localhost:8000',
+            'https://task-manager-pi-neon.vercel.app',
+            'https://taskmanager-xchn.onrender.com'
         ],
         credentials: true,
     })
