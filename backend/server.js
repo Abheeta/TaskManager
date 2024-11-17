@@ -67,7 +67,9 @@ app.use(session({
     cookie: {
         secure: true, // Set to true in production with HTTPS
         sameSite: 'None', // Use 'None' in production with secure: true
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours,
+        httpsOnly: true,
+        httpOnly: false
     },
     store: MongoStore.create({
         mongoUrl: process.env.MONGO_URL,
