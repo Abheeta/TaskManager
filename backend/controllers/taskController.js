@@ -7,29 +7,49 @@ const createTask = async(req, res, next) => {
 
     try {
         const {name, description, tasklistId}  = req.body;
+        const userId = req.user._id;
+
 
         if (!name) {
-            throw new HttpError.badRequest("Name is required");
+            throw  HttpError.badRequest("Name is required");
         }
         
         if (typeof name !== "string") {
-            throw new HttpError.badRequest("Name must be a string");
+            throw  HttpError.badRequest("Name must be a string");
         }
         
         if (typeof description !== "string" && typeof description !== "undefined") {
-            throw new HttpError.badRequest("Description must be a string");
+            throw  HttpError.badRequest("Description must be a string");
         }
         
         if (!tasklistId) {
-            throw new HttpError.badRequest("tasklistId is required");
+            throw  HttpError.badRequest("tasklistId is required");
         }
         
         if (!mongoose.Types.ObjectId.isValid(tasklistId)) {
-            throw new HttpError.badRequest("tasklistId must be a valid ObjectId");
+            throw  HttpError.badRequest("tasklistId must be a valid ObjectId");
         }
-        
 
-        const newtask = TaskModel.create({})
+
+        const newtask = await TaskModel.create({name: name, description: description, tasklist: tasklistId, user:userId});
+
+        const updatedTaskList = await TaskListModel.findByIdAndUpdate(
+            tasklistId,
+            {
+              $push: {
+                tasks: {
+                  $each: [newtask._id],
+                  $position: 0 // Adds the element to the start of the array
+                }
+              }
+            },
+            { new: true } // Option to return the updated document
+          );
+
+        res.status(201).json({
+            message: "task created successfully, and tasklist updated",
+            task: newtask
+        });
 
     } catch (err) {
         next(err);
@@ -39,8 +59,7 @@ const createTask = async(req, res, next) => {
 
 const getTaskListbyUserId = async(req, res, next) => {
     try {
-        const {userId} = req.query;
-        console.log(userId);
+        const userId = req.user._id;
         if (!userId) {
             throw new HttpError.badRequest("UserId is required");
         }
@@ -49,8 +68,10 @@ const getTaskListbyUserId = async(req, res, next) => {
             throw new HttpError.badRequest("UserId must be a valid ObjectId");
         }
     
-        const tasklists = await TaskListModel.find({ user: userId }).lean().exec();
+        const tasklists = await TaskListModel.find({ user: userId }).populate('tasks').lean().exec();
         console.log("Fetched tasklists:", tasklists);
+
+        
     
         if (!tasklists || tasklists.length === 0) {
             throw HttpError.notFound("No tasklists found for this user");
