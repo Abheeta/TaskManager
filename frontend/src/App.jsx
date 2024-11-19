@@ -4,7 +4,6 @@ import Login from './components/Auth/SignupForm';
 import "./index.css";
 import LoggedIn from './components/LoggedIn';
 import { CurrentUserProvider } from './components/UserContext';
-import Task from './components/Task';
 import SignupForm from './components/Auth/SignupForm';
 import LoginForm from './components/Auth/LoginForm';
 import Navbar from './components/Navbar';

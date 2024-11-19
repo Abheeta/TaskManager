@@ -57,15 +57,105 @@ const createTask = async(req, res, next) => {
 
 }
 
+const updateTaskDetails = async (req, res, next) => {
+    try {
+        const { name, description } = req.body;
+        const taskId = req.params.taskId;
+        const userId = req.user._id;
+
+        if (!taskId) {
+            throw HttpError.badRequest("taskId is required");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(taskId)) {
+            throw HttpError.badRequest("taskId must be a valid ObjectId");
+        }
+
+        if (name !== undefined) {
+            if (typeof name !== "string") {
+                throw HttpError.badRequest("Name must be a string");
+            }
+            if (name.trim() === "") {
+                throw HttpError.badRequest("Name cannot be an empty field");
+            }
+        }
+
+        if (description !== undefined && typeof description !== "string") {
+            throw HttpError.badRequest("Description must be a string");
+        }
+
+        const updateFields = {};
+        if (name) updateFields.name = name;
+        if (description) updateFields.description = description;
+
+        const updatedTask = await TaskModel.findOneAndUpdate(
+            { _id: taskId, user: userId },
+            { $set: updateFields },
+            { new: true }
+        );
+
+        if (!updatedTask) {
+            throw HttpError.notFound("Task not found or not authorized to update");
+        }
+
+        res.status(200).json({
+            message: "Task updated successfully",
+            task: updatedTask
+        });
+    } catch (err) {
+        console.error("Error occurred while updating task: ", err);
+        next(err);
+    }
+};
+
+const deleteTask = async (req, res, next) => {
+    try {
+        const taskId = req.params.taskId;
+        const userId = req.user._id;
+
+        if (!taskId) {
+            throw HttpError.badRequest("taskId is required");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(taskId)) {
+            throw HttpError.badRequest("taskId must be a valid ObjectId");
+        }
+
+        const taskObjectId = new mongoose.Types.ObjectId(taskId);
+
+        const task = await TaskModel.findOne({ _id: taskObjectId, user: userId });
+
+        if (!task) {
+            throw HttpError.notFound("Task not found or not authorized to delete");
+        }
+
+        await TaskModel.deleteOne({ _id: taskObjectId, user: userId });
+
+        await TaskListModel.findByIdAndUpdate(
+            task.tasklist,
+            {
+                $pull: { tasks: taskObjectId }
+            }
+        );
+
+        res.status(200).json({
+            message: "Task deleted successfully and removed from task list"
+        });
+    } catch (err) {
+        console.error("Error occurred while deleting task: ", err);
+        next(err);
+    }
+};
+
 const getTaskListbyUserId = async(req, res, next) => {
     try {
         const userId = req.user._id;
         if (!userId) {
-            throw new HttpError.badRequest("UserId is required");
+            throw HttpError.badRequest("UserId is required");
         }
     
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            throw new HttpError.badRequest("UserId must be a valid ObjectId");
+            throw HttpError.badRequest("UserId must be a valid ObjectId");
         }
     
         const tasklists = await TaskListModel.find({ user: userId }).populate('tasks').lean().exec();
@@ -91,7 +181,9 @@ const getTaskListbyUserId = async(req, res, next) => {
 
 module.exports = {
     createTask,
-    getTaskListbyUserId
+    getTaskListbyUserId,
+    updateTaskDetails,
+    deleteTask,
 }
 
 

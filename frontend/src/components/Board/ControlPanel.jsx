@@ -1,28 +1,40 @@
 import React, { useState } from 'react';
 import EditTaskModal from './EditTaskModal';
+import ModalOverlay from '../ModalOverlay';
 
-const ControlPanel = ({tasklists}) => {
+const ControlPanel = ({tasklists, setTaskLists}) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isEditTaskModelOpen, setisEditTaskModelOpen] = useState(-1);
+  const [isEditTaskModelOpen, setisEditTaskModelOpen] = useState(false);
 
-  const closeModal = () => {
-    setisEditTaskModelOpen(-1);
+  const closeModal = (createdTask) => {
+    setisEditTaskModelOpen(false);
+
+    if(createdTask) {
+      setTaskLists(currTaskLists => {
+        const newTaskLists = [...currTaskLists];
+        const taskListToAddTo = newTaskLists.find(taskList => taskList._id === createdTask.tasklist);
+        taskListToAddTo.tasks.unshift(createdTask);
+
+        return newTaskLists;
+      });
+    }
   };
 
   const openModal = () => {
-    setisEditTaskModelOpen(1); // Set to a specific index or task ID as needed
+    setisEditTaskModelOpen(true);
   };
 
   return (
     <>
-      {isEditTaskModelOpen >= 0 && (
-        <EditTaskModal
-          openIndex={isEditTaskModelOpen}
-          onClose={closeModal}
-          tasklists={tasklists}
-        />
+      {isEditTaskModelOpen && (
+        <ModalOverlay onClose={closeModal}>
+          <EditTaskModal
+            openIndex={isEditTaskModelOpen}
+            onClose={closeModal}
+            tasklists={tasklists}
+          />
+        </ModalOverlay>
       )}
-    
       <button 
         onClick={openModal}
         className="w-full md:w-auto bg-blue-600 text-white px-4 md:px-16 py-2 rounded-md hover:bg-blue-700">

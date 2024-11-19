@@ -79,7 +79,7 @@ const Board = () => {
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="min-h-screen bg-gray-100 p-4">
         <div className="max-w-7xl mx-auto space-y-4">
-          <ControlPanel tasklists={tasklists} />
+          <ControlPanel tasklists={tasklists} setTaskLists={setTaskLists} />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-4">
             {isLoading ? (
               <div className="flex justify-center items-center">
@@ -92,6 +92,7 @@ const Board = () => {
                   listId={tasklist._id} 
                   title={tasklist.name} 
                   tasks={tasklist.tasks} 
+                  setTaskLists={setTaskLists}
                 />
               ))
             )}

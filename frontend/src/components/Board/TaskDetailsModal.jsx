@@ -4,7 +4,7 @@ const TaskDetailsModal = ({ task, onClose }) => {
   if (!task) return null;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+    <div onClick={e => e.stopPropagation()} className="bg-white rounded-lg shadow-lg w-full max-w-md">
       <div className="p-6 space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Task Details</h2>

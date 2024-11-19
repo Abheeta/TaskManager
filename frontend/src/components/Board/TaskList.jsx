@@ -2,7 +2,9 @@ import React from 'react';
 import { Draggable, Droppable } from 'react-beautiful-dnd';
 import Task from './Task';
 
-const TaskList = ({ title, tasks, listId }) => {
+const TaskList = ({ title, tasks, listId, setTaskLists }) => {
+  console.log(tasks);
+
   return (
     <Droppable droppableId={String(listId)}>
       {(provided) => (
@@ -23,7 +25,7 @@ const TaskList = ({ title, tasks, listId }) => {
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                   >
-                    <Task task={task} />
+                    <Task task={task} setTaskLists={setTaskLists}/>
                   </div>
                 )}
               </Draggable>
