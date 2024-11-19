@@ -28,22 +28,38 @@ const Board = () => {
     }
   };
 
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const { source, destination } = result;
-
+  const onDragEnd = async (result) => {
+    if (!result.destination) return; // If no destination, do nothing
+  
+    const { source, destination, draggableId: taskId } = result;
+ 
+    let updatedTaskLists, destinationTaskId;
+  
+    // Handle dragging between different lists
     if (source.droppableId !== destination.droppableId) {
       const sourceList = tasklists.find(list => list._id === source.droppableId);
       const destList = tasklists.find(list => list._id === destination.droppableId);
-      
+  
+      // Remove the task from the source list
       const sourceTasks = Array.from(sourceList.tasks);
       const [movedTask] = sourceTasks.splice(source.index, 1);
-
+  
+      // Add the task to the destination list before the destinationTaskId
       const destTasks = Array.from(destList.tasks);
-      destTasks.splice(destination.index, 0, movedTask);
-
-      const updatedTaskLists = tasklists.map(list => {
+      destinationTaskId = destination.index !== null
+        ? destTasks[destination.index]?._id
+        : null;
+  
+      if (destinationTaskId) {
+        const destIndex = destTasks.findIndex(task => task._id.toString() === destinationTaskId);
+        destTasks.splice(destIndex, 0, movedTask);
+      } else {
+        // If no destination task ID (e.g., drop at the end), push the task
+        destTasks.push(movedTask);
+      }
+  
+      // Update both lists
+      updatedTaskLists = tasklists.map(list => {
         if (list._id === source.droppableId) {
           return { ...list, tasks: sourceTasks };
         } else if (list._id === destination.droppableId) {
@@ -52,24 +68,60 @@ const Board = () => {
           return list;
         }
       });
-
-      setTaskLists(updatedTaskLists);
+  
     } else {
+      // Handle reordering within the same list
       const list = tasklists.find(list => list._id === source.droppableId);
       const reorderedTasks = Array.from(list.tasks);
       const [movedTask] = reorderedTasks.splice(source.index, 1);
-      reorderedTasks.splice(destination.index, 0, movedTask);
-
-      const updatedTaskLists = tasklists.map(l => {
+  
+      destinationTaskId = destination.index !== null
+        ? reorderedTasks[destination.index]?._id
+        : null;
+  
+      if (destinationTaskId) {
+        const destIndex = reorderedTasks.findIndex(task => task._id.toString() === destinationTaskId);
+        reorderedTasks.splice(destIndex, 0, movedTask);
+      } else {
+        // If no destination task ID (e.g., drop at the end), push the task
+        reorderedTasks.push(movedTask);
+      }
+  
+      updatedTaskLists = tasklists.map(l => {
         if (l._id === source.droppableId) {
           return { ...l, tasks: reorderedTasks };
         }
         return l;
       });
-
-      setTaskLists(updatedTaskLists);
     }
-  };
+  
+    // Optimistic update: immediately update the UI
+    setTaskLists(updatedTaskLists);
+  
+    try {
+      // Make an API call to persist the changes on the server
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/task/reorder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          sourceListId: source.droppableId,
+          destListId: destination.droppableId,
+          taskId,
+          destinationTaskId,
+        }),
+      });
+
+      if(!response.ok) {
+        setTaskLists(tasklists);
+      }
+    } catch (error) {
+      console.error('Error updating task order:', error);
+      setTaskLists(tasklists); // Rollback on error
+    }
+  };  
 
   useEffect(() => {
     fetchTaskLists();

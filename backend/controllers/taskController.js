@@ -178,12 +178,60 @@ const getTaskListbyUserId = async(req, res, next) => {
     
 };
 
+const reorderTasks = async (req, res, next) => {
+    try {
+        const { sourceListId, destListId, taskId, destinationTaskId } = req.body;
+
+        // Fetch the source and destination task lists from the database
+        const sourceList = await TaskListModel.findById(sourceListId);
+        const destList = sourceListId === destListId ? sourceList : await TaskListModel.findById(destListId);
+
+        if (!sourceList || !destList) {
+            throw HttpError.badRequest("Task list not found");
+        }
+
+        // Remove the task from the source list
+        const taskIndex = sourceList.tasks.findIndex(task => task._id.toString() === taskId);
+        if (taskIndex === -1) {
+            throw HttpError.badRequest('Task not found in the source list');
+        }
+        const [movedTask] = sourceList.tasks.splice(taskIndex, 1);
+
+        // Insert the task into the destination list before/after the destination task ID
+        if (destinationTaskId) {
+            const destIndex = destList.tasks.findIndex(task => task._id.toString() === destinationTaskId);
+            if (destIndex === -1) {
+                throw HttpError.badRequest('Destination task not found');
+            }
+
+            // Insert the moved task before the found destination task
+            destList.tasks.splice(destIndex, 0, movedTask);
+        } else {
+            // If destinationTaskId is null or not provided, append to the end
+            destList.tasks.push(movedTask);
+        }
+
+        // Save the updated task lists
+        await sourceList.save();
+        if (sourceListId !== destListId) {
+            await destList.save();
+        }
+
+        res.status(200).json({ message: 'Task reordered successfully', tasklists: [sourceList, destList] });
+    } catch (err) {
+        console.error("Error occurred while reordering tasks: ", err);
+        next(err);
+    }
+};
+
+
 
 module.exports = {
     createTask,
     getTaskListbyUserId,
     updateTaskDetails,
     deleteTask,
+    reorderTasks,
 }
 
 
