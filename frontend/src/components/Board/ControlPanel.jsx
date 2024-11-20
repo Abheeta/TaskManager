@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import EditTaskModal from './EditTaskModal';
 import ModalOverlay from '../ModalOverlay';
 
-const ControlPanel = ({tasklists, setTaskLists}) => {
+const ControlPanel = ({tasklists, setTaskLists, setSearch, setSort}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditTaskModelOpen, setisEditTaskModelOpen] = useState(false);
+  const [sortOption, setSortOption] = useState(""); // Default to no sorting
+
+  useEffect(() => {
+    const searchDebounceTimeout = setTimeout(() => {
+      setSearch(searchTerm);
+    }, 1000);
+
+    return () => clearTimeout(searchDebounceTimeout);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    // Only update sorting when sortOption is set
+    if (sortOption !== null) {
+      setSort(sortOption);
+    } else {
+      setSort(""); // No sort applied when sortOption is null
+    }
+  }, [sortOption, setSort]);
 
   const closeModal = (createdTask) => {
     setisEditTaskModelOpen(false);
 
-    if(createdTask) {
+    if (createdTask) {
       setTaskLists(currTaskLists => {
         const newTaskLists = [...currTaskLists];
         const taskListToAddTo = newTaskLists.find(taskList => taskList._id === createdTask.tasklist);
@@ -22,6 +40,17 @@ const ControlPanel = ({tasklists, setTaskLists}) => {
 
   const openModal = () => {
     setisEditTaskModelOpen(true);
+  };
+
+  const handleSortChange = (e) => {
+    const selectedSort = e.target.value;
+    if (selectedSort === 'Recent') {
+      setSortOption('createdAt_desc'); // Sort by recent (descending)
+    } else if (selectedSort === 'Oldest') {
+      setSortOption('createdAt_asc'); // Sort by oldest (ascending)
+    } else {
+      setSortOption(""); // No sorting
+    }
   };
 
   return (
@@ -56,10 +85,13 @@ const ControlPanel = ({tasklists, setTaskLists}) => {
         <div className="flex items-center gap-2">
           <label htmlFor="sort" className="text-gray-700">Sort By:</label>
           <select
+            value={sortOption === 'createdAt_desc' ? 'Recent' : (sortOption === 'createdAt_asc' ? 'Oldest' : '')} 
+            onChange={handleSortChange}
             className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option>Recent</option>
-            <option>Oldest</option>
+            <option value="">No Sort</option>
+            <option value="Recent">Recent</option>
+            <option value="Oldest">Oldest</option>
           </select>
         </div>
       </div>

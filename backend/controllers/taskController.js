@@ -147,9 +147,11 @@ const deleteTask = async (req, res, next) => {
     }
 };
 
-const getTaskListbyUserId = async(req, res, next) => {
+const getTaskListbyUserId = async (req, res, next) => {
     try {
         const userId = req.user._id;
+        const { search, sortBy } = req.query;  // Capture the search and sort query parameters
+    
         if (!userId) {
             throw HttpError.badRequest("UserId is required");
         }
@@ -158,71 +160,126 @@ const getTaskListbyUserId = async(req, res, next) => {
             throw HttpError.badRequest("UserId must be a valid ObjectId");
         }
     
-        const tasklists = await TaskListModel.find({ user: userId }).populate('tasks').lean().exec();
-        console.log("Fetched tasklists:", tasklists);
-
-        
+        // Build the query for fetching tasklists
+        let query = { user: userId };
+    
+        // Add search filter to the query if a search term is provided
+        // if (search) {
+        //     const searchRegex = new RegExp(search, 'i');  // Case-insensitive search
+        //     query['tasks.name'] = { $regex: searchRegex };  // Assuming tasks have a 'name' field
+        // }
+    
+        // Sorting
+        let sort = {};
+        if (sortBy === 'createdAt_asc') {
+            sort.createdAt = 1;  // Ascending sort
+        } else if (sortBy === 'createdAt_desc') {
+            sort.createdAt = -1;  // Descending sort
+        }
+    
+        // Fetch the tasklists and populate the tasks with the filter
+        const tasklists = await TaskListModel.find(query)
+            .populate({
+                path: 'tasks',
+                match: search ? { $or: [ { name: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } } ] } : {},  // Filter tasks if search is present
+                options: { sort }  // Apply sorting to tasks
+            })
+            .lean()
+            .exec();
     
         if (!tasklists || tasklists.length === 0) {
             throw HttpError.notFound("No tasklists found for this user");
         }
-    
+  
         res.status(200).json({
             message: "Tasklists are successfully fetched",
-            tasklists: tasklists
+            tasklists: tasklists,
         });
     } catch (err) {
         console.error("Error occurred: ", err);
         next(err);
     }
-    
 };
+  
 
 const reorderTasks = async (req, res, next) => {
     try {
         const { sourceListId, destListId, taskId, destinationTaskId } = req.body;
 
+        // Validate user ID (assuming user is authenticated and `req.user` is available)
+        const userId = req.user._id;
+        if (!userId) {
+            throw HttpError.badRequest("UserId is required");
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            throw HttpError.badRequest("UserId must be a valid ObjectId");
+        }
+
+        // Validate task list IDs
+        if (!mongoose.Types.ObjectId.isValid(sourceListId) || !mongoose.Types.ObjectId.isValid(destListId)) {
+            throw HttpError.badRequest("Both sourceListId and destListId must be valid ObjectIds");
+        }
+
+        // Validate taskId
+        if (!mongoose.Types.ObjectId.isValid(taskId)) {
+            throw HttpError.badRequest("taskId must be a valid ObjectId");
+        }
+
+        // If destinationTaskId is provided, validate it
+        if (destinationTaskId && !mongoose.Types.ObjectId.isValid(destinationTaskId)) {
+            throw HttpError.badRequest("destinationTaskId must be a valid ObjectId");
+        }
+
         // Fetch the source and destination task lists from the database
-        const sourceList = await TaskListModel.findById(sourceListId);
-        const destList = sourceListId === destListId ? sourceList : await TaskListModel.findById(destListId);
+        const sourceList = await TaskListModel.findById(sourceListId).populate('tasks').lean().exec();
+        const destList = sourceListId === destListId 
+            ? sourceList 
+            : await TaskListModel.findById(destListId).populate('tasks').lean().exec();
 
         if (!sourceList || !destList) {
-            throw HttpError.badRequest("Task list not found");
+            throw HttpError.notFound("Source or Destination task list not found");
         }
 
-        // Remove the task from the source list
-        const taskIndex = sourceList.tasks.findIndex(task => task._id.toString() === taskId);
-        if (taskIndex === -1) {
-            throw HttpError.badRequest('Task not found in the source list');
+        // Ensure task exists in the source list
+        const taskExists = sourceList.tasks.some(task => task._id.toString() === taskId);
+        if (!taskExists) {
+            throw HttpError.notFound("Task not found in the source list");
         }
-        const [movedTask] = sourceList.tasks.splice(taskIndex, 1);
 
-        // Insert the task into the destination list before/after the destination task ID
+        // If destinationTaskId is provided, ensure it's valid within the destination list
         if (destinationTaskId) {
-            const destIndex = destList.tasks.findIndex(task => task._id.toString() === destinationTaskId);
-            if (destIndex === -1) {
-                throw HttpError.badRequest('Destination task not found');
+            const destinationTaskExists = destList.tasks.some(task => task._id.toString() === destinationTaskId);
+            if (!destinationTaskExists) {
+                throw HttpError.notFound("Destination task not found in the destination list");
             }
+        }
 
-            // Insert the moved task before the found destination task
-            destList.tasks.splice(destIndex, 0, movedTask);
+        // Now proceed to the reordering operation after validation
+        const sourceTasks = Array.from(sourceList.tasks);
+        const [movedTask] = sourceTasks.splice(sourceList.tasks.findIndex(task => task._id.toString() === taskId), 1);
+
+        const destTasks = Array.from(destList.tasks);
+        if (destinationTaskId) {
+            const destinationIndex = destTasks.findIndex(task => task._id.toString() === destinationTaskId);
+            destTasks.splice(destinationIndex, 0, movedTask);
         } else {
-            // If destinationTaskId is null or not provided, append to the end
-            destList.tasks.push(movedTask);
+            destTasks.push(movedTask); // If no destinationTaskId, append to the end
         }
 
         // Save the updated task lists
-        await sourceList.save();
+        await TaskListModel.findByIdAndUpdate(sourceListId, { tasks: sourceTasks }).exec();
         if (sourceListId !== destListId) {
-            await destList.save();
+            await TaskListModel.findByIdAndUpdate(destListId, { tasks: destTasks }).exec();
         }
 
         res.status(200).json({ message: 'Task reordered successfully', tasklists: [sourceList, destList] });
     } catch (err) {
-        console.error("Error occurred while reordering tasks: ", err);
+        console.error("Error occurred: ", err);
         next(err);
     }
 };
+
 
 
 

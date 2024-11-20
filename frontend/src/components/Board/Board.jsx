@@ -8,12 +8,28 @@ const Board = () => {
   const { currentUser } = useCurrentUser();
   const [tasklists, setTaskLists] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("");
 
-  const fetchTaskLists = async () => {
+  const fetchTaskLists = async (sort, search) => {
+    console.log("SS:", sort, search)
     setIsLoading(true);
 
+    let url = `${import.meta.env.VITE_BACKEND_URL}/tasklist?`;
+
+    // Add sort query parameter if available
+    if (sort) {
+      url += `sortBy=${sort}&`;
+    }
+  
+    // Add search query parameter if available
+    if (search) {
+      url += `search=${encodeURIComponent(search)}&`;
+    }
+  
+  
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tasklist`, {credentials: 'include'});
+      const response = await fetch(url, {credentials: 'include'});
       if (response.ok) {
         const data = await response.json();
         console.log(data);
@@ -124,14 +140,19 @@ const Board = () => {
   };  
 
   useEffect(() => {
-    fetchTaskLists();
-  }, [currentUser._id]);
+    fetchTaskLists(sort, search);
+  }, [currentUser._id, sort, search]);
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="min-h-screen bg-gray-100 p-4">
         <div className="max-w-7xl mx-auto space-y-4">
-          <ControlPanel tasklists={tasklists} setTaskLists={setTaskLists} />
+          <ControlPanel
+            tasklists={tasklists}
+            setTaskLists={setTaskLists}
+            setSearch={setSearch}
+            setSort={setSort}
+          />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-4">
             {isLoading ? (
               <div className="flex justify-center items-center">
